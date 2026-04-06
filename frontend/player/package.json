@@ -1,0 +1,30 @@
+{
+  "name": "@sessionreplay/player",
+  "version": "1.0.0",
+  "description": "Session Replay Player for React applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "session-replay",
+    "player",
+    "rrweb"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "rrweb-player": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "rrweb-player": "^2.0.0"
+  }
+}
