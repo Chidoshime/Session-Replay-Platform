@@ -1,16 +1,12 @@
 package com.sessionreplay.model;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
+import javax.persistence.*;
 import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
 
 @Entity
 @Table(name = "sessions")
@@ -21,32 +17,36 @@ import java.util.UUID;
 public class Session {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "session_id", nullable = false, updatable = false)
     private String sessionId;
 
-    @Column(nullable = false)
+    @Column(name = "start_time", nullable = false)
     private Instant startTime;
 
+    @Column(name = "end_time")
     private Instant endTime;
 
-    @Column(length = 2048)
-    private String userAgent;
-
-    private String ip;
-
+    @Column(name = "url")
     private String url;
 
+    @Column(name = "user_agent")
+    private String userAgent;
+
+    @Column(name = "ip_address")
+    private String ip;
+
+    @Column(name = "active", columnDefinition = "boolean default true")
+    private Boolean active = true;
+
+    @Column(name = "event_count", columnDefinition = "integer default 0")
     private Integer eventCount = 0;
 
-    @Column(columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, Object> metadata;
-
-    @Column(nullable = false)
-    private Boolean active = true;
+    // Храним JSON как строку для совместимости с Java 11 / Hibernate 5
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private String metadata;
 
     @Version
     private Long version;
