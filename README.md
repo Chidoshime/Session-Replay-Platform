@@ -68,9 +68,9 @@ backend/
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/sessionreplay
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://localhost:5432/session_replay_db
+    username: ems-load-tests
+    password: 66778899
   
   rabbitmq:
     host: localhost
@@ -182,12 +182,10 @@ function SessionViewer() {
 ### 1. Подготовка базы данных PostgreSQL
 
 ```sql
-CREATE DATABASE sessionreplay;
-CREATE USER sessionreplay WITH PASSWORD 'postgres';
-GRANT ALL PRIVILEGES ON DATABASE sessionreplay TO sessionreplay;
+CREATE DATABASE session_replay_db;
+-- База данных уже создана с пользователем ems-load-tests
+-- Таблицы автоматически создадутся при первом запуске приложения благодаря ddl-auto: update
 ```
-
-База данных автоматически создаст таблицы при первом запуске приложения благодаря `ddl-auto: update`.
 
 ### 2. Настройка RabbitMQ
 
