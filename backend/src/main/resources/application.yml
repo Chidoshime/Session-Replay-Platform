@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: session-replay-backend
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/session_replay_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+  
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.sessionreplay: DEBUG
+    org.springframework.amqp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+session:
+  replay:
+    buffer-size: 100
+    flush-interval-ms: 5000
+    max-session-duration-ms: 3600000
