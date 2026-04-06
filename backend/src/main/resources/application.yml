@@ -3,10 +3,18 @@ spring:
     name: session-replay-backend
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/session_replay_db
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://10.5.92.108:5432/session_replay_db
+    username: ems-load-tests
+    password: 66778899
     driver-class-name: org.postgresql.Driver
+    # Проверка соединения при старте и перед использованием
+    hikari:
+      connection-timeout: 10000 # 10 секунд на ожидание подключения
+      maximum-pool-size: 10
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-test-query: SELECT 1
+      validation-timeout: 5000
   
   jpa:
     hibernate:
