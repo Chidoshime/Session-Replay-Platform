@@ -1,54 +1,48 @@
 ```
-# Dependencies
-node_modules/
-
-# Build artifacts
+# Java/Maven specific ignores
 target/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# Dependencies
+lib/
+libs/
+
+# Logs
+*.log
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Editors
-.vscode/
-.idea/
+# Build artifacts
+build/
+dist/
+out/
 
-# Python
+# Python (if mixed project)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-venv/
 .venv/
-.env
-
-# Logs
-*.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Testing
-.coverage
-htmlcov/
-coverage/
-.pytest_cache/
-.mypy_cache/
-
-# Java
-*.class
-*.jar
-*.war
-*.ear
-*.nar
-*.so
-*.dll
-*.dylib
-
-# Frontend build artifacts
-dist/
-build/
+venv/
 ```
