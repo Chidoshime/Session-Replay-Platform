@@ -1,21 +1,16 @@
 package com.sessionreplay.model;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
+import javax.persistence.*;
 import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
 
 @Entity
 @Table(name = "session_events", indexes = {
-    @Index(name = "idx_session_id_timestamp", columnList = "sessionId, timestamp"),
-    @Index(name = "idx_event_type", columnList = "eventType")
+    @Index(name = "idx_session_id", columnList = "sessionId"),
+    @Index(name = "idx_timestamp", columnList = "timestamp")
 })
 @Data
 @Builder
@@ -24,33 +19,29 @@ import java.util.UUID;
 public class SessionEvent {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "session_id", nullable = false)
     private String sessionId;
 
-    @Column(nullable = false)
-    private Integer timestamp;
+    @Column(name = "timestamp", nullable = false)
+    private Instant timestamp;
 
-    @Column(nullable = false)
-    private String eventType;
+    @Column(name = "type", nullable = false)
+    private String type;
 
-    @Column(nullable = false, columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, Object> data;
+    // Храним JSON события как строку (TEXT/JSONB)
+    @Column(name = "data", columnDefinition = "jsonb")
+    private String data;
 
-    @Column(length = 500)
-    private String url;
-
-    private Integer viewportWidth;
-
-    private Integer viewportHeight;
-
-    private Instant createdAt;
+    @Column(name = "index", nullable = false)
+    private Integer index;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = Instant.now();
+        if (this.timestamp == null) {
+            this.timestamp = Instant.now();
+        }
     }
 }
