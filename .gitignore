@@ -1,48 +1,80 @@
 ```
-# Java/Maven specific ignores
-target/
-*.class
-*.jar
-*.war
-*.ear
-*.zip
-*.tar.gz
-
 # Dependencies
-lib/
-libs/
+target/
+.m2/
+.gradle/
 
 # Logs
 *.log
-
-# IDE files
-.idea/
-*.iml
-*.ipr
-*.iws
-.vscode/
-*.swp
-*.swo
-
-# System files
-.DS_Store
-Thumbs.db
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Build artifacts
-build/
-dist/
-out/
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Python (if mixed project)
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.venv/
-venv/
+.Python
+*.so
+*.egg-info/
+.eggs/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+
+# Build outputs
+dist/
+build/
+*.out
+*.exe
+*.dll
+*.so
+*.a
+*.obj
+
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
