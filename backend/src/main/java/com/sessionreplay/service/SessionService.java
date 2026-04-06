@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -72,7 +74,12 @@ public class SessionService {
             .userAgent(userAgent)
             .ip(ip)
             .url(url)
-            .metadata(metadata)
+            try {
+    ObjectMapper mapper = new ObjectMapper();
+    session.setMetadata(mapper.writeValueAsString(batch.getMetadata()));
+} catch (JsonProcessingException e) {
+    throw new RuntimeException("Error serializing metadata", e);
+}
             .active(true)
             .eventCount(0)
             .build();
