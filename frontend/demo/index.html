@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Replay Demo (Stable)</title>
+    
+    <!-- Стили для плеера -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/rrweb-player@1.0.0-alpha.4/dist/style.css" />
+    
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f0f2f5; }
+        .rr-block { background: #fff; border: 2px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 8px; position: relative; }
+        .rr-block::after { content: "🚫 Эта панель не записывается"; position: absolute; top: -10px; right: 10px; background: #333; color: #fff; padding: 2px 8px; font-size: 12px; border-radius: 4px; }
+        body.recording { border: 5px solid red; }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { margin-top: 0; color: #333; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; font-weight: bold; text-align: center; }
+        .status.idle { background: #e3f2fd; color: #0d47a1; }
+        .status.recording { background: #ffebee; color: #b71c1c; animation: pulse 1s infinite; }
+        .status.saved { background: #e8f5e9; color: #1b5e20; }
+        .status.error { background: #fce4ec; color: #880e4f; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        button { padding: 10px 20px; margin-right: 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; color: white; transition: opacity 0.2s; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-start { background: #1976d2; }
+        .btn-stop { background: #d32f2f; }
+        .btn-play { background: #388e3c; }
+        #player-container { margin-top: 20px; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; min-height: 500px; display: none; background: #000; }
+        .test-area { background: #fafafa; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #eee; }
+        input, textarea { width: 100%; padding: 8px; margin: 5px 0 15px; box-sizing: border-box; }
+        .scroll-box { height: 200px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px; background: linear-gradient(#eee, #ccc); }
+    </style>
+</head>
+<body>
+
+    <!-- Панель управления (НЕ записывается) -->
+    <div id="controls" class="rr-block container">
+        <h1>Session Replay Demo (Stable v1.1.3)</h1>
+        <p>Нажмите <b>Start Recording</b>, подождите сообщения о снимке, затем действуйте.</p>
+        
+        <div id="status" class="status idle">Статус: Ожидание</div>
+        
+        <button id="btnStart" class="btn-start" onclick="startRecording()">▶ Start Recording</button>
+        <button id="btnStop" class="btn-stop" onclick="stopRecording()" disabled>⏹ Stop & Save</button>
+        <button id="btnPlay" class="btn-play" onclick="loadLastSession()" disabled>📺 Load Last Session</button>
+        
+        <div id="log" style="margin-top: 10px; font-size: 12px; color: #666; font-family: monospace; white-space: pre-wrap;"></div>
+    </div>
+
+    <!-- Контент для тестирования -->
+    <div class="container test-area">
+        <h2>📝 Тестируемая зона</h2>
+        <p>Кликайте, скролльте и вводите текст здесь:</p>
+        
+        <label>Текстовое поле (ввод будет скрыт):</label>
+        <input type="text" placeholder="Печатайте здесь..." id="testInput">
+        
+        <label>Чекбоксы:</label>
+        <div>
+            <input type="checkbox" id="cb1"> <label for="cb1">Опция 1</label><br>
+            <input type="checkbox" id="cb2"> <label for="cb2">Опция 2</label>
+        </div>
+
+        <label>Кнопки:</label>
+        <div>
+            <button onclick="alert('Клик записан!')" style="background:#eee; color:#333; border:1px solid #ccc; margin-right:5px;">Тестовая кнопка</button>
+        </div>
+
+        <label>Скролл:</label>
+        <div class="scroll-box">
+            <p>Прокрутите вниз...</p>
+            <div style="height: 300px; background: linear-gradient(#ddd, #999);"></div>
+            <p>Конец блока.</p>
+        </div>
+    </div>
+
+    <!-- Контейнер плеера -->
+    <div id="player-container"></div>
+
+    <!-- БИБЛИОТЕКИ: СТРОГО СТАБИЛЬНЫЕ ВЕРСИИ -->
+    <!-- rrweb 1.1.3 гарантирует полный snapshot в событии type 4 -->
+    <script src="https://cdn.jsdelivr.net/npm/rrweb@1.1.3/dist/rrweb.min.js"></script>
+    <!-- rrweb-player 1.0.0-alpha.4 совместим с форматом rrweb 1.x -->
+    <script src="https://cdn.jsdelivr.net/npm/rrweb-player@1.0.0-alpha.4/dist/index.js"></script>
+
+    <script>
+        let stopFn = null;
+        let events = [];
+        let sessionId = 'session-' + Date.now();
+        const backendUrl = 'http://localhost:8080';
+        let snapshotReceived = false;
+
+        const statusEl = document.getElementById('status');
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        const btnPlay = document.getElementById('btnPlay');
+        const logEl = document.getElementById('log');
+        const playerContainer = document.getElementById('player-container');
+
+        function log(msg) {
+            logEl.innerText = msg;
+            console.log(msg);
+        }
+
+        async function startRecording() {
+            events = [];
+            sessionId = 'session-' + Date.now();
+            snapshotReceived = false;
+            
+            if (typeof rrweb === 'undefined') {
+                alert('Ошибка: Библиотека rrweb не загружена!');
+                return;
+            }
+
+            log("⏳ Инициализация записи...");
+            statusEl.className = 'status recording';
+            statusEl.innerText = 'Статус: Запись идет (ожидание снимка)...';
+            btnStart.disabled = true;
+            btnStop.disabled = true; // Блокируем стоп, пока нет снимка
+            btnPlay.disabled = true;
+            playerContainer.style.display = 'none';
+            document.body.classList.add('recording');
+
+            // Запуск записи
+            stopFn = rrweb.record({
+                emit(event) {
+                    // Логирование первого события для отладки
+                    if (events.length === 0) {
+                        console.log("Первое событие:", event);
+                    }
+
+                    // ФИЛЬТР: Принимаем только полные снимки
+                    if (event.type === 4) {
+                        if (!event.data.node) {
+                            console.warn("⚠️ Получен пустой снимок (без node), игнорируем.", event);
+                            return; 
+                        }
+                        console.log("✅ Полный снимок (Snapshot) получен! Размер node:", JSON.stringify(event.data.node).length);
+                        snapshotReceived = true;
+                        
+                        // Разблокируем кнопку стопа
+                        btnStop.disabled = false;
+                        statusEl.innerText = 'Статус: ЗАПИСЬ АКТИВНА (Снимок готов)';
+                        statusEl.className = 'status recording';
+                        log("✅ Снимок получен. Можете кликать и скроллить.");
+                    }
+
+                    events.push(event);
+                },
+                blockClass: 'rr-block',
+                maskAllInputs: true,
+                recordCanvas: false,
+                inlineStylesheet: true,
+            });
+
+            // Тайм-аут: если снимок не пришел за 5 секунд
+            setTimeout(() => {
+                if (!snapshotReceived && stopFn) {
+                    stopFn();
+                    document.body.classList.remove('recording');
+                    statusEl.className = 'status error';
+                    statusEl.innerText = 'Ошибка: Снимок не получен';
+                    btnStart.disabled = false;
+                    log("❌ Ошибка: Снимок не получен за 5 секунд. Перезапустите запись.");
+                    alert("Не удалось захватить начальный снимок страницы. Попробуйте еще раз.");
+                }
+            }, 5000);
+        }
+
+        async function stopRecording() {
+            if (!stopFn || !snapshotReceived) return;
+            
+            stopFn();
+            document.body.classList.remove('recording');
+            
+            statusEl.className = 'status saved';
+            statusEl.innerText = 'Статус: Отправка на сервер...';
+            btnStart.disabled = false;
+            btnStop.disabled = true;
+            
+            log(`Запись остановлена. Всего событий: ${events.length}. Отправка...`);
+
+            try {
+                const payload = {
+                    sessionId: sessionId,
+                    metadata: {
+                        userAgent: navigator.userAgent,
+                        url: window.location.href,
+                        screenWidth: window.screen.width,
+                        screenHeight: window.screen.height
+                    },
+                    events: events
+                };
+
+                const response = await fetch(`${backendUrl}/api/v1/sessions/events`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    statusEl.innerText = 'Статус: Сохранено успешно!';
+                    log(`Успешно! Ответ: ${JSON.stringify(result)}`);
+                    btnPlay.disabled = false;
+                    
+                    setTimeout(() => {
+                        loadLastSession(sessionId);
+                    }, 2000);
+                } else {
+                    throw new Error('Server error: ' + response.status);
+                }
+            } catch (error) {
+                console.error(error);
+                statusEl.className = 'status error';
+                statusEl.innerText = 'Статус: Ошибка отправки!';
+                log(`Ошибка: ${error.message}`);
+            }
+        }
+
+        async function loadLastSession(forcedSessionId = null) {
+            const idToLoad = forcedSessionId || sessionId;
+            statusEl.innerText = 'Статус: Загрузка плеера...';
+            log('Загрузка событий для: ' + idToLoad);
+
+            try {
+                const eventsRes = await fetch(`${backendUrl}/api/v1/sessions/${idToLoad}/events`);
+                if (!eventsRes.ok) throw new Error('Сессия не найдена (404)');
+                
+                let eventsData = await eventsRes.json();
+
+                if (!eventsData || eventsData.length === 0) {
+                    alert('События пусты. Подождите пару секунд и попробуйте снова.');
+                    return;
+                }
+
+                // Парсинг данных (если бэкенд сохранил их как строки)
+                eventsData = eventsData.map(e => {
+                    if (typeof e.data === 'string') {
+                        try { e.data = JSON.parse(e.data); } catch(err) {}
+                    }
+                    return e;
+                });
+
+                // Проверка на Snapshot
+                const hasSnapshot = eventsData.some(e => e.event_type === 4 && e.data && e.data.node);
+                if (!hasSnapshot) {
+                    console.error("В базе нет валидного снимка!", eventsData[0]);
+                    throw new Error("В базе данных отсутствует начальный снимок (Type 4 с node). Воспроизведение невозможно.");
+                }
+
+                playerContainer.innerHTML = '';
+                playerContainer.style.display = 'block';
+
+                if (typeof rrwebPlayer === 'undefined') {
+                    throw new Error('Библиотека rrweb-player не загружена!');
+                }
+
+                new rrwebPlayer({
+                    target: playerContainer,
+                    props: {
+                        events: eventsData,
+                        width: 800,
+                        height: 600,
+                        skipInactive: true,
+                        showController: true,
+                        autoPlay: true
+                    }
+                });
+
+                statusEl.innerText = 'Статус: Воспроизведение готово';
+                log('Плеер запущен.');
+
+            } catch (error) {
+                console.error(error);
+                statusEl.className = 'status error';
+                statusEl.innerText = 'Статус: Ошибка загрузки';
+                log(`Ошибка: ${error.message}`);
+                alert(error.message);
+            }
+        }
+    </script>
+</body>
+</html>

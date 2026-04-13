@@ -1,5 +1,6 @@
 package com.sessionreplay.event;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,12 +16,9 @@ import java.util.Map;
 public class SessionEventBatch {
     
     private String sessionId;
-    
     private String userId;
-    
     private List<EventDTO> events;
-    
-    private Map<String, String> metadata;
+    private Map<String, Object> metadata;
     
     @Data
     @Builder
@@ -28,7 +26,11 @@ public class SessionEventBatch {
     @AllArgsConstructor
     public static class EventDTO {
         private Long timestamp;
+        
+        // ВАЖНО: Эта аннотация связывает JSON-поле "type" с Java-полем "eventType"
+        @JsonProperty("type") 
         private Integer eventType;
+        
         private Map<String, Object> data;
         private String url;
         private Integer viewportWidth;

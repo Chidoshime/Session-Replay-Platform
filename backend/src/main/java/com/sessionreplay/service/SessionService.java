@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -108,5 +109,9 @@ public class SessionService {
             log.warn("Unable to serialize session metadata to JSON", e);
             return "{}";
         }
+    }
+
+    public List<Session> getAllSessions() {
+        return sessionRepository.findAllByOrderByStartTimeDesc();
     }
 }

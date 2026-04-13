@@ -1,10 +1,10 @@
 package com.sessionreplay.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sessionreplay.event.SessionEventBatch;
 import com.sessionreplay.model.Session;
 import com.sessionreplay.model.SessionEvent;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sessionreplay.repository.SessionEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +14,9 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -32,14 +33,20 @@ public class SessionEventListener {
                                     @Header(AmqpHeaders.CHANNEL) com.rabbitmq.client.Channel channel,
                                     @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
         try {
-            log.debug("Processing session events for sessionId: {}", batch.getSessionId());
+            log.info("📥 Received batch for session: {}", batch.getSessionId());
             
+            if (batch.getEvents() == null || batch.getEvents().isEmpty()) {
+                log.warn("Empty event batch received");
+                channel.basicAck(deliveryTag, false);
+                return;
+            }
+
             // Создаем или обновляем сессию
             Session session = sessionService.getOrCreateSession(
                 batch.getSessionId(),
-                batch.getMetadata() != null ? batch.getMetadata().get("userAgent") : null,
-                batch.getMetadata() != null ? batch.getMetadata().get("ip") : null,
-                batch.getEvents().isEmpty() ? null : batch.getEvents().get(0).getUrl()
+                getMetadataValue(batch, "userAgent"),
+                getMetadataValue(batch, "ip"),
+                batch.getEvents().get(0).getUrl()
             );
 
             // Сохраняем события
@@ -49,12 +56,13 @@ public class SessionEventListener {
             sessionService.updateEventCount(session.getSessionId(), savedEvents.size());
 
             channel.basicAck(deliveryTag, false);
-            log.info("Successfully processed {} events for session {}", savedEvents.size(), batch.getSessionId());
+            log.info("✅ Successfully processed {} events for session {}", savedEvents.size(), batch.getSessionId());
             
         } catch (Exception e) {
-            log.error("Error processing session events for sessionId: {}", batch.getSessionId(), e);
+            log.error("❌ Error processing session events for sessionId: {}", batch.getSessionId(), e);
             try {
-                channel.basicNack(deliveryTag, false, true); // Requeue
+                // Отключаем requeue (третий параметр false), чтобы не зацикливать ошибочные сообщения
+                channel.basicNack(deliveryTag, false, false); 
             } catch (Exception ex) {
                 log.error("Error sending nack", ex);
             }
@@ -62,27 +70,54 @@ public class SessionEventListener {
     }
 
     private List<SessionEvent> saveEvents(SessionEventBatch batch) {
-        List<SessionEvent> events = batch.getEvents().stream()
-            .map(event -> SessionEvent.builder()
+        List<SessionEvent> eventsToSave = new ArrayList<>();
+        
+        for (SessionEventBatch.EventDTO event : batch.getEvents()) {
+            String dataJson = "{}";
+            try {
+                if (event.getData() != null) {
+                    dataJson = objectMapper.writeValueAsString(event.getData());
+                }
+            } catch (Exception e) {
+                log.error("Error serializing event data", e);
+            }
+
+            Integer eventTypeVal = event.getEventType();
+            if (eventTypeVal == null) {
+                log.warn("Event type is null! Event: {}", event);
+                eventTypeVal = 0; 
+            }
+
+            Long timestampVal = event.getTimestamp(); 
+            if (timestampVal == null) {
+                timestampVal = 0L;
+            }
+
+            SessionEvent sessionEvent = SessionEvent.builder()
                 .sessionId(batch.getSessionId())
-                .timestamp(event.getTimestamp())
-                .eventType(event.getEventType())
-                .data(toJson(event.getData()))
+                .timestamp(timestampVal)
+                .eventType(eventTypeVal)
+                .data(dataJson)
                 .url(event.getUrl())
                 .viewportWidth(event.getViewportWidth())
                 .viewportHeight(event.getViewportHeight())
-                .build())
-            .collect(Collectors.toList());
+                .build();
+            
+            eventsToSave.add(sessionEvent);
+        }
+
+        List<SessionEvent> savedEvents = new ArrayList<>();
+        eventRepository.saveAll(eventsToSave).forEach(savedEvents::add);
         
-        return eventRepository.saveAll(events);
+        return savedEvents;
     }
 
-    private String toJson(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
-            log.warn("Unable to serialize event payload to JSON", e);
-            return "{}";
+    // Исправленный метод с приведением типа
+    private String getMetadataValue(SessionEventBatch batch, String key) {
+        if (batch.getMetadata() != null) {
+            Object value = batch.getMetadata().get(key);
+            return value != null ? value.toString() : null;
         }
+        return null;
     }
 }
