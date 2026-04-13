@@ -8,10 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface SessionRepository extends JpaRepository<Session, UUID> {
+public interface SessionRepository extends JpaRepository<Session, Long> {
     
     Optional<Session> findBySessionId(String sessionId);
     

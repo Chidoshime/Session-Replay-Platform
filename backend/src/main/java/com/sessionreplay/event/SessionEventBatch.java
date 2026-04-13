@@ -27,8 +27,8 @@ public class SessionEventBatch {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EventDTO {
-        private Integer timestamp;
-        private String type;
+        private Long timestamp;
+        private Integer eventType;
         private Map<String, Object> data;
         private String url;
         private Integer viewportWidth;

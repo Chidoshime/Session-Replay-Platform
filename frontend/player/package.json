@@ -17,7 +17,7 @@
   "license": "MIT",
   "peerDependencies": {
     "react": "^18.0.0",
-    "rrweb-player": "^2.0.0"
+    "rrweb-player": "^1.0.0-alpha.4"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
@@ -25,6 +25,6 @@
     "typescript": "^5.3.0"
   },
   "dependencies": {
-    "rrweb-player": "^2.0.0"
+    "rrweb-player": "^1.0.0-alpha.4"
   }
 }

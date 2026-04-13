@@ -1,5 +1,7 @@
 package com.sessionreplay.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sessionreplay.model.Session;
 import com.sessionreplay.repository.SessionRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import java.util.Optional;
 public class SessionService {
 
     private final SessionRepository sessionRepository;
+    private final ObjectMapper objectMapper;
 
     @Value("${session.replay.max-session-duration-ms:3600000}")
     private long maxSessionDurationMs;
@@ -72,7 +75,7 @@ public class SessionService {
             .userAgent(userAgent)
             .ip(ip)
             .url(url)
-            .metadata(metadata)
+            .metadata(toJson(metadata))
             .active(true)
             .eventCount(0)
             .build();
@@ -96,5 +99,14 @@ public class SessionService {
 
     public Optional<Session> getSession(String sessionId) {
         return sessionRepository.findBySessionId(sessionId);
+    }
+
+    private String toJson(Map<String, Object> value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            log.warn("Unable to serialize session metadata to JSON", e);
+            return "{}";
+        }
     }
 }

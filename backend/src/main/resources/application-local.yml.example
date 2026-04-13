@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/session_replay_db
+    username: postgres
+    password: postgres
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+session:
+  replay:
+    api-key: local-dev-key
+    allowed-origin: http://localhost:3000

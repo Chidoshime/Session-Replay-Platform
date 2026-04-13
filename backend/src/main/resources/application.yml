@@ -3,9 +3,9 @@ spring:
     name: session-replay-backend
   
   datasource:
-    url: jdbc:postgresql://10.5.92.108:5432/session_replay_db
-    username: ems-load-tests
-    password: 66778899
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/session_replay_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
     # Проверка соединения при старте и перед использованием
     hikari:
@@ -26,10 +26,10 @@ spring:
     show-sql: true
   
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
     listener:
       simple:
         acknowledge-mode: manual
@@ -47,6 +47,8 @@ logging:
 
 session:
   replay:
-    buffer-size: 100
-    flush-interval-ms: 5000
-    max-session-duration-ms: 3600000
+    api-key: ${SESSION_REPLAY_API_KEY:}
+    allowed-origin: ${SESSION_REPLAY_ALLOWED_ORIGIN:http://localhost:3000}
+    buffer-size: ${SESSION_REPLAY_BUFFER_SIZE:100}
+    flush-interval-ms: ${SESSION_REPLAY_FLUSH_INTERVAL_MS:5000}
+    max-session-duration-ms: ${SESSION_REPLAY_MAX_SESSION_DURATION_MS:3600000}

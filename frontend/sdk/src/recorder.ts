@@ -1,13 +1,12 @@
-import rrweb from 'rrweb';
+import { record } from 'rrweb';
 import type { eventWithTime } from '@rrweb/types';
-import { SessionReplayConfig, SessionEvent, SessionMetadata } from '../types';
+import { SessionReplayConfig, SessionEvent, SessionMetadata } from './types';
 
 export class SessionRecorder {
   private config: Required<SessionReplayConfig>;
   private eventBuffer: SessionEvent[] = [];
   private sessionId: string;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
-  private startTime: number;
   private isRecording: boolean = false;
 
   constructor(config: SessionReplayConfig) {
@@ -31,7 +30,6 @@ export class SessionRecorder {
     };
 
     this.sessionId = this.generateSessionId();
-    this.startTime = Date.now();
   }
 
   /**
@@ -44,14 +42,13 @@ export class SessionRecorder {
 
     this.isRecording = true;
     this.eventBuffer = [];
-    this.startTime = Date.now();
 
     // Настраиваем rrweb для записи DOM событий
-    rrweb.record({
+    record({
       emit: (event: eventWithTime) => {
         this.addEvent({
-          timestamp: event.timestamp - this.startTime,
-          type: event.type.toString(),
+          timestamp: event.timestamp,
+          eventType: event.type,
           data: event.data,
           url: window.location.href,
           viewportWidth: window.innerWidth,
@@ -208,9 +205,9 @@ export class SessionRecorder {
    */
   public addCustomEvent(type: string, data: any): void {
     this.addEvent({
-      timestamp: Date.now() - this.startTime,
-      type: `custom:${type}`,
-      data,
+      timestamp: Date.now(),
+      eventType: 5, // custom plugin event type in rrweb ecosystem
+      data: { customType: type, payload: data },
       url: window.location.href,
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,

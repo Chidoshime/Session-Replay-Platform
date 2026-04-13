@@ -1,7 +1,6 @@
 package com.sessionreplay.controller;
 
 import com.sessionreplay.event.SessionEventBatch;
-import com.sessionreplay.model.Session;
 import com.sessionreplay.model.SessionEvent;
 import com.sessionreplay.service.SessionService;
 import com.sessionreplay.repository.SessionEventRepository;
@@ -9,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +23,7 @@ import static com.sessionreplay.config.RabbitMQConfig.SESSION_EVENTS_ROUTING_KEY
 @RequestMapping("/api/v1/sessions")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "${session.replay.allowed-origin:http://localhost:3000}")
 public class SessionController {
 
     private final RabbitTemplate rabbitTemplate;
@@ -33,14 +33,21 @@ public class SessionController {
     @Value("${session.replay.buffer-size:100}")
     private int bufferSize;
 
+    @Value("${session.replay.api-key:}")
+    private String apiKey;
+
     /**
      * Принимает пакет событий сессии от клиента
      */
     @PostMapping("/events")
     public ResponseEntity<Map<String, Object>> ingestEvents(
             @RequestBody SessionEventBatch batch,
+            @RequestHeader(value = "X-API-Key", required = false) String requestApiKey,
             @RequestHeader(value = "User-Agent", required = false) String userAgent,
             @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
+        if (!isApiKeyValid(requestApiKey)) {
+            return unauthorized();
+        }
         
         log.debug("Received {} events for session {}", 
             batch.getEvents() != null ? batch.getEvents().size() : 0, 
@@ -72,7 +79,12 @@ public class SessionController {
      * Получение сессии по ID
      */
     @GetMapping("/{sessionId}")
-    public ResponseEntity<Map<String, Object>> getSession(@PathVariable String sessionId) {
+    public ResponseEntity<Map<String, Object>> getSession(
+            @PathVariable String sessionId,
+            @RequestHeader(value = "X-API-Key", required = false) String requestApiKey) {
+        if (!isApiKeyValid(requestApiKey)) {
+            return unauthorized();
+        }
         log.info("Fetching session: {}", sessionId);
         
         return sessionService.getSession(sessionId)
@@ -97,7 +109,12 @@ public class SessionController {
      * Получение всех событий сессии для воспроизведения
      */
     @GetMapping("/{sessionId}/events")
-    public ResponseEntity<List<SessionEvent>> getSessionEvents(@PathVariable String sessionId) {
+    public ResponseEntity<?> getSessionEvents(
+            @PathVariable String sessionId,
+            @RequestHeader(value = "X-API-Key", required = false) String requestApiKey) {
+        if (!isApiKeyValid(requestApiKey)) {
+            return unauthorized();
+        }
         log.info("Fetching events for session: {}", sessionId);
         
         List<SessionEvent> events = eventRepository.findBySessionIdOrderByTimestamp(sessionId);
@@ -108,7 +125,12 @@ public class SessionController {
      * Завершение сессии (может вызываться клиентом при уходе со страницы)
      */
     @PostMapping("/{sessionId}/end")
-    public ResponseEntity<Map<String, Object>> endSession(@PathVariable String sessionId) {
+    public ResponseEntity<Map<String, Object>> endSession(
+            @PathVariable String sessionId,
+            @RequestHeader(value = "X-API-Key", required = false) String requestApiKey) {
+        if (!isApiKeyValid(requestApiKey)) {
+            return unauthorized();
+        }
         log.info("Ending session: {}", sessionId);
         
         sessionService.endSession(sessionId);
@@ -118,5 +140,19 @@ public class SessionController {
         response.put("sessionId", sessionId);
         
         return ResponseEntity.ok(response);
+    }
+
+    private boolean isApiKeyValid(String requestApiKey) {
+        if (apiKey == null || apiKey.isBlank()) {
+            return true;
+        }
+        return apiKey.equals(requestApiKey);
+    }
+
+    private ResponseEntity<Map<String, Object>> unauthorized() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("error", "Unauthorized");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 }

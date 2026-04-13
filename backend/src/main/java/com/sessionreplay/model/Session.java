@@ -4,9 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnTransformer;
 import javax.persistence.*;
 import java.time.Instant;
-import java.util.Map;
 
 @Entity
 @Table(name = "sessions")
@@ -46,6 +46,7 @@ public class Session {
 
     // Храним JSON как строку для совместимости с Java 11 / Hibernate 5
     @Column(name = "metadata", columnDefinition = "jsonb")
+    @ColumnTransformer(write = "?::jsonb")
     private String metadata;
 
     @Version

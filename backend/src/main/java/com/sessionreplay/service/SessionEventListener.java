@@ -3,8 +3,9 @@ package com.sessionreplay.service;
 import com.sessionreplay.event.SessionEventBatch;
 import com.sessionreplay.model.Session;
 import com.sessionreplay.model.SessionEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sessionreplay.repository.SessionEventRepository;
-import com.sessionreplay.repository.SessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -13,9 +14,8 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +24,7 @@ public class SessionEventListener {
 
     private final SessionService sessionService;
     private final SessionEventRepository eventRepository;
+    private final ObjectMapper objectMapper;
 
     @RabbitListener(queues = "session.events.queue")
     @Transactional
@@ -65,14 +66,23 @@ public class SessionEventListener {
             .map(event -> SessionEvent.builder()
                 .sessionId(batch.getSessionId())
                 .timestamp(event.getTimestamp())
-                .eventType(event.getType())
-                .data(event.getData())
+                .eventType(event.getEventType())
+                .data(toJson(event.getData()))
                 .url(event.getUrl())
                 .viewportWidth(event.getViewportWidth())
                 .viewportHeight(event.getViewportHeight())
                 .build())
-            .toList();
+            .collect(Collectors.toList());
         
         return eventRepository.saveAll(events);
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            log.warn("Unable to serialize event payload to JSON", e);
+            return "{}";
+        }
     }
 }

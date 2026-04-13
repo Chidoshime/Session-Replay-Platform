@@ -4,13 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnTransformer;
 import javax.persistence.*;
-import java.time.Instant;
 
 @Entity
 @Table(name = "session_events", indexes = {
-    @Index(name = "idx_session_id", columnList = "sessionId"),
-    @Index(name = "idx_timestamp", columnList = "timestamp")
+    @Index(name = "idx_session_id", columnList = "session_id"),
+    @Index(name = "idx_timestamp", columnList = "ts_ms")
 })
 @Data
 @Builder
@@ -25,23 +25,23 @@ public class SessionEvent {
     @Column(name = "session_id", nullable = false)
     private String sessionId;
 
-    @Column(name = "timestamp", nullable = false)
-    private Instant timestamp;
+    @Column(name = "ts_ms", nullable = false)
+    private Long timestamp;
 
-    @Column(name = "type", nullable = false)
-    private String type;
+    @Column(name = "event_type", nullable = false)
+    private Integer eventType;
 
     // Храним JSON события как строку (TEXT/JSONB)
     @Column(name = "data", columnDefinition = "jsonb")
+    @ColumnTransformer(write = "?::jsonb")
     private String data;
 
-    @Column(name = "index", nullable = false)
-    private Integer index;
+    @Column(name = "url")
+    private String url;
 
-    @PrePersist
-    protected void onCreate() {
-        if (this.timestamp == null) {
-            this.timestamp = Instant.now();
-        }
-    }
+    @Column(name = "viewport_width")
+    private Integer viewportWidth;
+
+    @Column(name = "viewport_height")
+    private Integer viewportHeight;
 }

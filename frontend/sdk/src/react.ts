@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { init, SessionRecorder, SessionReplayConfig } from '@sessionreplay/sdk';
+import { init, SessionRecorder } from './index';
+import type { SessionReplayConfig } from './types';
 
-interface UseSessionReplayProps extends Omit<SessionReplayConfig, 'apiKey'> {
+interface UseSessionReplayProps extends Partial<Omit<SessionReplayConfig, 'apiKey'>> {
   /** Автоматически начинать запись при монтировании компонента */
   autoStart?: boolean;
   

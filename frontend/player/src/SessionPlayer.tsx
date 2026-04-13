@@ -80,8 +80,8 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({
         // Преобразуем наши события в формат rrweb
         const rrwebEvents: eventWithTime[] = sessionEvents.map((e: any) => ({
           timestamp: e.timestamp,
-          type: parseInt(e.eventType, 10),
-          data: e.data,
+          type: Number(e.eventType),
+          data: typeof e.data === 'string' ? JSON.parse(e.data) : e.data,
         }));
 
         setEvents(rrwebEvents);
@@ -100,7 +100,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({
 
   // Инициализация плеера
   useEffect(() => {
-    if (!containerRef.current || events.length === 0 || !playerRef.current) {
+    if (!containerRef.current || events.length === 0) {
       return;
     }
 
@@ -116,13 +116,13 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({
         height: typeof height === 'number' ? height : parseInt(height as string, 10) || 600,
         speed,
         autoPlay,
-        showControls,
+        showController: showControls,
       },
     });
 
     return () => {
       if (playerRef.current) {
-        playerRef.current.destroy();
+        (playerRef.current as any).$destroy?.();
         playerRef.current = null;
       }
     };
